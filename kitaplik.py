@@ -17,7 +17,7 @@ import sys
 import threading
 import webbrowser
 import zipfile
-from concurrent.futures import ProcessPoolExecutor
+from concurrent.futures import ProcessPoolExecutor, ThreadPoolExecutor
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import parse_qs, urlparse
@@ -242,7 +242,9 @@ class Scanner:
             con.executemany("DELETE FROM files WHERE root=? AND path=?", [(root, p) for p in gone])
             con.commit()
             self.state["total"] = len(todo)
-            with ProcessPoolExecutor(max_workers=os.cpu_count() or 4) as pool:
+            # paketlenmiş (PyInstaller) uygulamada alt süreç başlatmak güvenilir değil: iş parçacığı kullan
+            executor = ThreadPoolExecutor if getattr(sys, "frozen", False) else ProcessPoolExecutor
+            with executor(max_workers=os.cpu_count() or 4) as pool:
                 for row in pool.map(analyze, [root] * len(todo), todo, chunksize=16):
                     con.execute(f"INSERT OR REPLACE INTO files ({','.join(row)}) VALUES ({','.join('?' * len(row))})", list(row.values()))
                     self.state["done"] += 1

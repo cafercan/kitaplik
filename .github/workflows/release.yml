@@ -58,11 +58,13 @@ jobs:
           kitaplik.py
       - name: Paketlenmiş uygulamayı dene
         shell: pwsh
+        timeout-minutes: 3
         run: |
           $env:KITAPLIK_LOG = "$PWD\selftest.log"
-          $p = Start-Process dist\Kitaplik\Kitaplik.exe -ArgumentList '--selftest' -Wait -PassThru
+          $p = Start-Process dist\Kitaplik\Kitaplik.exe -ArgumentList '--selftest' -PassThru
+          if (-not $p.WaitForExit(120000)) { $p.Kill(); Write-Host "selftest 2 dakikada bitmedi" }
           if (Test-Path selftest.log) { Get-Content selftest.log }
-          if ($p.ExitCode -ne 0) { throw "selftest başarısız: $($p.ExitCode)" }
+          if (-not $p.HasExited -or $p.ExitCode -ne 0) { throw "selftest başarısız: $($p.ExitCode)" }
       - name: Inno Setup kurulumu
         shell: pwsh
         run: |
@@ -99,6 +101,7 @@ jobs:
           plutil -replace CFBundleDisplayName -string "Kitaplık" "$PLIST"
           codesign --force --deep --sign - dist/Kitaplik.app
       - name: Paketlenmiş uygulamayı dene
+        timeout-minutes: 3
         run: dist/Kitaplik.app/Contents/MacOS/Kitaplik --selftest
       - name: DMG
         run: |
