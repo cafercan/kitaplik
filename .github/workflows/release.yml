@@ -1,0 +1,120 @@
+# v* etiketi itildiğinde Linux, Windows ve macOS paketlerini derler, her paketi
+# --selftest ile dener ve hepsi geçerse GitHub Release oluşturur.
+# Elle çalıştırıldığında (workflow_dispatch) yalnızca derler, release oluşturmaz.
+name: release
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  version:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.v.outputs.version }}
+    steps:
+      - uses: actions/checkout@v4
+      - id: v
+        run: |
+          VER="$(python3 kitaplik.py --version)"
+          echo "version=$VER" >> "$GITHUB_OUTPUT"
+          if [[ "$GITHUB_REF_TYPE" == "tag" && "$GITHUB_REF_NAME" != "v$VER" ]]; then
+            echo "Etiket ($GITHUB_REF_NAME) ile kitaplik.py sürümü (v$VER) uyuşmuyor"; exit 1
+          fi
+
+  linux:
+    needs: version
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: .deb paketi
+        run: packaging/linux/build-deb.sh dist
+      - name: Paketten çıkan uygulamayı dene
+        run: |
+          mkdir x && dpkg-deb -x dist/*.deb x
+          python3 x/usr/lib/kitaplik/kitaplik.py --selftest
+      - uses: actions/upload-artifact@v4
+        with: { name: linux, path: dist/*.deb }
+
+  windows:
+    needs: version
+    runs-on: windows-latest
+    env:
+      VER: ${{ needs.version.outputs.version }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12" }
+      - run: pip install pyinstaller pywebview
+      - name: PyInstaller
+        run: >
+          pyinstaller --noconfirm --windowed --name Kitaplik
+          --icon packaging/icons/kitaplik.ico
+          --add-data "static:static" --add-data "kitaplik.svg:."
+          kitaplik.py
+      - name: Paketlenmiş uygulamayı dene
+        shell: pwsh
+        run: |
+          $p = Start-Process dist\Kitaplik\Kitaplik.exe -ArgumentList '--selftest' -Wait -PassThru
+          if ($p.ExitCode -ne 0) { throw "selftest başarısız: $($p.ExitCode)" }
+      - name: Inno Setup kurulumu
+        shell: pwsh
+        run: |
+          if (-not (Get-Command iscc -ErrorAction SilentlyContinue)) {
+            $env:Path += ";${env:ProgramFiles(x86)}\Inno Setup 6"
+          }
+          if (-not (Get-Command iscc -ErrorAction SilentlyContinue)) { choco install innosetup -y --no-progress }
+          iscc /DAppVersion=$env:VER packaging\windows\kitaplik.iss
+      - uses: actions/upload-artifact@v4
+        with: { name: windows, path: dist/*-setup.exe }
+
+  macos:
+    needs: version
+    runs-on: macos-14
+    env:
+      VER: ${{ needs.version.outputs.version }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12" }
+      - run: pip install pyinstaller pywebview
+      - name: PyInstaller
+        run: >
+          pyinstaller --noconfirm --windowed --name Kitaplik
+          --osx-bundle-identifier com.cafercan.kitaplik
+          --icon packaging/icons/kitaplik.icns
+          --add-data "static:static" --add-data "kitaplik.svg:."
+          kitaplik.py
+      - name: Sürüm bilgisi ve imza
+        run: |
+          PLIST=dist/Kitaplik.app/Contents/Info.plist
+          plutil -replace CFBundleShortVersionString -string "$VER" "$PLIST"
+          plutil -replace CFBundleVersion -string "$VER" "$PLIST"
+          plutil -replace CFBundleDisplayName -string "Kitaplık" "$PLIST"
+          codesign --force --deep --sign - dist/Kitaplik.app
+      - name: Paketlenmiş uygulamayı dene
+        run: dist/Kitaplik.app/Contents/MacOS/Kitaplik --selftest
+      - name: DMG
+        run: |
+          mkdir dmg && cp -R dist/Kitaplik.app dmg/ && ln -s /Applications dmg/Applications
+          hdiutil create -volname "Kitaplık" -srcfolder dmg -ov -format UDZO "dist/kitaplik-$VER-macos-arm64.dmg"
+      - uses: actions/upload-artifact@v4
+        with: { name: macos, path: dist/*.dmg }
+
+  release:
+    if: github.ref_type == 'tag'
+    needs: [version, linux, windows, macos]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with: { path: out, merge-multiple: true }
+      - name: SHA256SUMS.txt
+        run: cd out && sha256sum * > SHA256SUMS.txt && cat SHA256SUMS.txt
+      - name: Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release create "$GITHUB_REF_NAME" out/* --repo "$GITHUB_REPOSITORY" --title "Kitaplık $GITHUB_REF_NAME" --generate-notes

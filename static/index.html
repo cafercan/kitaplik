@@ -89,7 +89,7 @@ kbd{font-size:11px;border:1px solid var(--line);border-radius:4px;padding:0 4px;
 </head>
 <body>
 <header>
-  <h1>📚 Kitaplık</h1>
+  <h1>📚 Kitaplık <small id="ver" style="font-weight:400;font-size:11px;color:var(--muted)"></small></h1>
   <span id="rootPath">Klasör seçilmedi</span>
   <span id="progress"></span>
   <button id="btnScan" title="Değişen dosyaları yeniden tara">Yeniden tara</button>
@@ -373,6 +373,7 @@ async function poll() {
   let wasRunning = false;
   while (true) {
     const s = await api('/api/state');
+    $('#ver').textContent = s.version ? 'v' + s.version : '';
     $('#rootPath').textContent = s.root ? (s.root.split('/').filter(Boolean).length > 2 ? '…/' + s.root.split('/').filter(Boolean).slice(-2).join('/') : s.root) : 'Klasör seçilmedi'; $('#rootPath').title = s.root || '';
     if (s.scan.running) { wasRunning = true; $('#progress').textContent = s.scan.total ? `taranıyor ${s.scan.done}/${s.scan.total}` : 'dosyalar listeleniyor…';
       if (s.scan.done && s.scan.done % 500 < 50) await load(); }

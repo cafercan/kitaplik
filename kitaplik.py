@@ -22,9 +22,23 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import parse_qs, urlparse
 
+__version__ = "0.1.0"
+
 APP_DIR = Path(__file__).resolve().parent
-STATIC = APP_DIR / "static"
-CONF_DIR = Path(os.environ.get("XDG_CONFIG_HOME", Path.home() / ".config")) / "kitaplik"
+# PyInstaller ile paketlendiğinde arayüz dosyaları geçici açma klasöründe durur
+RES_DIR = Path(getattr(sys, "_MEIPASS", APP_DIR))
+STATIC = RES_DIR / "static"
+
+
+def _conf_base():
+    if platform.system() == "Windows":
+        return Path(os.environ.get("APPDATA", Path.home() / "AppData" / "Roaming"))
+    if platform.system() == "Darwin":
+        return Path.home() / "Library" / "Application Support"
+    return Path(os.environ.get("XDG_CONFIG_HOME", Path.home() / ".config"))
+
+
+CONF_DIR = _conf_base() / "kitaplik"
 CONF_FILE = CONF_DIR / "config.json"
 DB_FILE = CONF_DIR / "kitaplik.db"
 PORT = int(os.environ.get("KITAPLIK_PORT", "8765"))
@@ -218,7 +232,8 @@ class Scanner:
                 for f in files:
                     if f.startswith(".") or f.rsplit(".", 1)[-1].lower() not in BOOK_EXT:
                         continue
-                    rel = os.path.relpath(os.path.join(d, f), root)
+                    # arayüz ve veritabanı her sistemde "/" ayırıcı kullanır
+                    rel = os.path.relpath(os.path.join(d, f), root).replace(os.sep, "/")
                     found.add(rel)
                     st = os.stat(os.path.join(d, f))
                     if known.get(rel) != (st.st_size, st.st_mtime):
@@ -339,7 +354,7 @@ class Handler(BaseHTTPRequestHandler):
                 return self.send(b"Yetkisiz", "text/plain; charset=utf-8", 403)
             return self.send((STATIC / "index.html").read_bytes(), "text/html; charset=utf-8")
         if url.path == "/api/state":
-            return self.send({"root": self.root(), "scan": scanner.state, "poppler": HAS_POPPLER})
+            return self.send({"root": self.root(), "scan": scanner.state, "poppler": HAS_POPPLER, "version": __version__})
         if url.path == "/api/browse":
             path = q.get("path") or self.root() or str(Path.home())
             path = os.path.abspath(os.path.expanduser(path))
@@ -458,7 +473,7 @@ def gtk_window(url):
     GLib.set_prgname("kitaplik")
     GLib.set_application_name("Kitaplık")
     win = Gtk.Window(title="Kitaplık")
-    icon = APP_DIR / "kitaplik.svg"
+    icon = RES_DIR / "kitaplik.svg"
     if icon.exists():
         win.set_icon_from_file(str(icon))
     win.set_default_size(1400, 860)
@@ -490,7 +505,74 @@ def show_window(url):
     threading.Event().wait()
 
 
+def log(msg):
+    # konsolsuz paketlenmiş uygulamalarda (Windows --windowed) stdout yoktur
+    if sys.stdout:
+        print(msg, flush=True)
+
+
+def selftest():
+    """Pencere açmadan uçtan uca dener: derleme sunucusunda paketin çalıştığını doğrular."""
+    import tempfile
+    import time
+    import urllib.request
+
+    lib = tempfile.mkdtemp(prefix="kitaplik-test-")
+    os.makedirs(os.path.join(lib, "Roman"))
+    with zipfile.ZipFile(os.path.join(lib, "Roman", "Yazar Adı - Deneme Kitabı.epub"), "w") as z:
+        z.writestr("mimetype", "application/epub+zip")
+        z.writestr("META-INF/container.xml", '<container><rootfiles><rootfile full-path="c.opf"/></rootfiles></container>')
+        z.writestr("c.opf", "<package><metadata><dc:title>Deneme</dc:title><dc:language>tr</dc:language></metadata></package>")
+        z.writestr("ch1.xhtml", "<html><body>" + "Merhaba dünya. " * 3000 + "</body></html>")
+    server = ThreadingHTTPServer(("127.0.0.1", 0), Handler)
+    threading.Thread(target=server.serve_forever, daemon=True).start()
+    base = f"http://127.0.0.1:{server.server_address[1]}"
+    headers = {"X-Kitaplik-Token": TOKEN, "Content-Type": "application/json"}
+
+    def call(path, body=None):
+        data = json.dumps(body).encode() if body is not None else None
+        with urllib.request.urlopen(urllib.request.Request(base + path, data, headers)) as r:
+            return r.read()
+
+    conf = load_conf()
+    try:
+        assert b"Kitapl" in call(f"/?t={TOKEN}"), "arayüz yüklenmedi"
+        call("/api/root", {"path": lib})
+        for _ in range(100):
+            if not json.loads(call("/api/state"))["scan"]["running"]:
+                break
+            time.sleep(0.1)
+        files = json.loads(call("/api/files"))
+        assert len(files) == 1, f"beklenen 1 kitap, bulunan {len(files)}"
+        f = files[0]
+        assert f["path"] == "Roman/Yazar Adı - Deneme Kitabı.epub", f["path"]
+        assert f["author"] == "Yazar Adı" and f["score"] >= 40, f
+        call("/api/fav", {"paths": [f["path"]], "on": True})
+        assert json.loads(call("/api/files"))[0]["fav"], "favori kaydedilmedi"
+        if platform.system() != "Linux":
+            import webview  # noqa: F401  paketlenmiş uygulamada pencere kütüphanesi olmalı
+    finally:
+        save_conf(conf)  # kullanıcının seçili klasörünü geri koy
+        con = db()
+        for table in ("files", "tags", "favorites"):
+            con.execute(f"DELETE FROM {table} WHERE root=?", (os.path.abspath(lib),))
+        con.commit()
+        con.close()
+        shutil.rmtree(lib, ignore_errors=True)
+    log(f"Kitaplık {__version__} selftest: OK")
+
+
 def main():
+    if "--version" in sys.argv:
+        log(__version__)
+        return
+    if "--selftest" in sys.argv:
+        try:
+            selftest()
+        except BaseException as e:  # hata penceresi açılmasın, çıkış koduyla bildir
+            log(f"selftest HATA: {type(e).__name__}: {e}")
+            os._exit(1)
+        os._exit(0)
     try:
         server = ThreadingHTTPServer(("127.0.0.1", PORT), Handler)
     except OSError:
@@ -514,4 +596,7 @@ def main():
 
 
 if __name__ == "__main__":
+    # paketlenmiş uygulamada çoklu işlemci taraması için gerekli
+    import multiprocessing
+    multiprocessing.freeze_support()
     main()
