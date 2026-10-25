@@ -1,27 +1,42 @@
 #!/usr/bin/env bash
-# Kitaplık'ı ~/.local/share/kitaplik/app altına kurar ve uygulama menüsüne ekler.
-# Kaynak klasör harici diskte olsa bile kurulu uygulama ondan bağımsız çalışır.
+# Rafta'yı ~/.local/share/rafta/app altına kurar ve uygulama menüsüne ekler.
+# Kullanım: ./install-linux.sh            kur / güncelle
+#           ./install-linux.sh --uninstall kaldır (ayarlar ve etiketler korunur)
 set -e
 SRC="$(cd "$(dirname "$0")" && pwd)"
-APP=~/.local/share/kitaplik/app
-mkdir -p "$APP/static" ~/.local/share/applications ~/.local/share/icons/hicolor/scalable/apps
-cp "$SRC/kitaplik.py" "$SRC/kitaplik.svg" "$APP/"
+APP="$HOME/.local/share/rafta/app"
+DESKTOP="$HOME/.local/share/applications/rafta.desktop"
+ICON="$HOME/.local/share/icons/hicolor/scalable/apps/rafta.svg"
+
+# eski adla ("Kitaplık") yapılmış kurulumu temizle
+rm -rf "$HOME/.local/share/kitaplik"
+rm -f "$HOME/.local/share/applications/kitaplik.desktop" "$HOME/.local/share/icons/hicolor/scalable/apps/kitaplik.svg"
+
+if [ "$1" = "--uninstall" ]; then
+    rm -rf "$HOME/.local/share/rafta" "$DESKTOP" "$ICON"
+    update-desktop-database "$HOME/.local/share/applications" 2>/dev/null || true
+    echo "Rafta kaldırıldı. Ayarlar ve etiketler ~/.config/rafta altında duruyor."
+    exit 0
+fi
+
+mkdir -p "$APP/static" "$(dirname "$DESKTOP")" "$(dirname "$ICON")"
+cp "$SRC/rafta.py" "$SRC/rafta.svg" "$APP/"
 cp "$SRC/static/index.html" "$APP/static/"
-cp "$SRC/kitaplik.svg" ~/.local/share/icons/hicolor/scalable/apps/kitaplik.svg
-cat > ~/.local/share/applications/kitaplik.desktop <<DESK
+cp "$SRC/rafta.svg" "$ICON"
+cat > "$DESKTOP" <<DESK
 [Desktop Entry]
 Type=Application
-Name=Kitaplık
+Name=Rafta
 GenericName=E-kitap Yöneticisi
 Comment=E-kitap etiketleme, filtreleme ve kalite puanı
-Exec=python3 "$APP/kitaplik.py"
-Icon=kitaplik
+Exec=python3 "$APP/rafta.py"
+Icon=rafta
 Terminal=false
 Categories=Office;Viewer;
-Keywords=ebook;epub;pdf;kitap;e-kitap;
-StartupWMClass=kitaplik
+Keywords=ebook;epub;pdf;library;kitap;e-kitap;
+StartupWMClass=rafta
 DESK
-update-desktop-database ~/.local/share/applications 2>/dev/null || true
-gtk-update-icon-cache -q ~/.local/share/icons/hicolor 2>/dev/null || true
-echo "Kuruldu: $APP"
-echo "Uygulama menüsünde 'Kitaplık' olarak görünür. Güncellemek için bu betiği yeniden çalıştırın."
+update-desktop-database "$HOME/.local/share/applications" 2>/dev/null || true
+gtk-update-icon-cache -q "$HOME/.local/share/icons/hicolor" 2>/dev/null || true
+echo "Rafta kuruldu: $APP"
+echo "Uygulama menüsünde 'Rafta' olarak görünür. Güncellemek için bu betiği yeniden çalıştırın."

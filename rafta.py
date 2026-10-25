@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Kitaplık: yerel e-kitap klasörleri için etiketleme, filtreleme ve kalite puanı arayüzü.
+"""Rafta: yerel e-kitap klasörleri için etiketleme, filtreleme ve kalite puanı arayüzü.
 
 Yalnızca Python standart kütüphanesi kullanır. PDF analizi için `pdfinfo` ve
 `pdftotext` (poppler) varsa kullanılır; yoksa PDF'ler temel bilgilerle listelenir.
@@ -24,10 +24,11 @@ from urllib.parse import parse_qs, urlparse
 
 APP_DIR = Path(__file__).resolve().parent
 STATIC = APP_DIR / "static"
-CONF_DIR = Path(os.environ.get("XDG_CONFIG_HOME", Path.home() / ".config")) / "kitaplik"
+_CONF_BASE = Path(os.environ.get("XDG_CONFIG_HOME", Path.home() / ".config"))
+CONF_DIR = _CONF_BASE / "rafta"
 CONF_FILE = CONF_DIR / "config.json"
-DB_FILE = CONF_DIR / "kitaplik.db"
-PORT = int(os.environ.get("KITAPLIK_PORT", "8765"))
+DB_FILE = CONF_DIR / "rafta.db"
+PORT = int(os.environ.get("RAFTA_PORT", "8765"))
 # Her açılışta üretilen anahtar: başka sitelerin localhost API'sini kullanmasını engeller
 TOKEN = secrets.token_urlsafe(32)
 
@@ -37,6 +38,15 @@ HAS_POPPLER = bool(shutil.which("pdfinfo") and shutil.which("pdftotext"))
 
 
 # ---------------------------------------------------------------- ayarlar
+
+def migrate_legacy():
+    """Eski adla ("Kitaplık") oluşturulmuş ayar ve veritabanını yeni konuma taşır."""
+    old = _CONF_BASE / "kitaplik"
+    if old.is_dir() and not CONF_DIR.exists():
+        old.rename(CONF_DIR)
+        if (CONF_DIR / "kitaplik.db").exists():
+            (CONF_DIR / "kitaplik.db").rename(DB_FILE)
+
 
 def load_conf():
     try:
@@ -267,7 +277,7 @@ def inside(root, rel):
 def epub_cover(full):
     z = zipfile.ZipFile(full)
     names = z.namelist()
-    images = [n for n in names if re.search(r"\.(jpe?g|png|gif|webp)$", n, re.I)]
+    images = [n for n in names if re.search(r"\.(jpe?g|png|gif|webp|svg)$", n, re.I)]
     try:
         container = z.read("META-INF/container.xml").decode("utf-8", "ignore")
         opf_path = re.search(r'full-path="([^"]+)"', container).group(1)
@@ -323,7 +333,7 @@ class Handler(BaseHTTPRequestHandler):
         port = self.server.server_address[1]
         if self.headers.get("Host") not in (f"127.0.0.1:{port}", f"localhost:{port}"):
             return False
-        token = self.headers.get("X-Kitaplik-Token") or (q or {}).get("t")
+        token = self.headers.get("X-Rafta-Token") or (q or {}).get("t")
         return secrets.compare_digest(token or "", TOKEN)
 
     def do_GET(self):
@@ -375,7 +385,7 @@ class Handler(BaseHTTPRequestHandler):
             if not data:
                 return self.send(b"", "text/plain", 404)
             ext = name.rsplit(".", 1)[-1].lower()
-            return self.send(data, {"jpg": "image/jpeg", "jpeg": "image/jpeg"}.get(ext, f"image/{ext}"))
+            return self.send(data, {"jpg": "image/jpeg", "jpeg": "image/jpeg", "svg": "image/svg+xml"}.get(ext, f"image/{ext}"))
         self.send({"error": "bulunamadı"}, code=404)
 
     def do_POST(self):
@@ -448,11 +458,11 @@ def gtk_window(url):
     gi.require_version("WebKit2", "4.1")
     from gi.repository import GLib, Gtk, WebKit2
 
-    # dock'ta menüdeki kısayolla eşleşsin (StartupWMClass=kitaplik)
-    GLib.set_prgname("kitaplik")
-    GLib.set_application_name("Kitaplık")
-    win = Gtk.Window(title="Kitaplık")
-    icon = APP_DIR / "kitaplik.svg"
+    # dock'ta menüdeki kısayolla eşleşsin (StartupWMClass=rafta)
+    GLib.set_prgname("rafta")
+    GLib.set_application_name("Rafta")
+    win = Gtk.Window(title="Rafta")
+    icon = APP_DIR / "rafta.svg"
     if icon.exists():
         win.set_icon_from_file(str(icon))
     win.set_default_size(1400, 860)
@@ -467,7 +477,7 @@ def gtk_window(url):
 def pywebview_window(url):
     """macOS (ve pywebview kuruluysa diğer sistemler): yerel WebKit penceresi."""
     import webview
-    webview.create_window("Kitaplık", url, width=1400, height=860)
+    webview.create_window("Rafta", url, width=1400, height=860)
     webview.start()
 
 
@@ -485,6 +495,7 @@ def show_window(url):
 
 
 def main():
+    migrate_legacy()
     try:
         server = ThreadingHTTPServer(("127.0.0.1", PORT), Handler)
     except OSError:

@@ -2,3 +2,19 @@ __pycache__/
 *.pyc
 .venv/
 .DS_Store
+
+# Kitap dosyaları asla depoya girmesin
+*.epub
+*.pdf
+*.mobi
+*.azw
+*.azw3
+*.djvu
+*.fb2
+*.cbz
+*.cbr
+*.doc
+*.docx
+*.rtf
+*.txt
+*.db
