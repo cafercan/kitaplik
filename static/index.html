@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Rafta</title>
+<title>Kitaplık</title>
 <style>
 :root{--bg:#f6f5f2;--panel:#fff;--line:#e3e1db;--text:#22211f;--muted:#76736c;--accent:#2f6f5e;--accent-soft:#e3efea;--hi:#3c8a4a;--mid:#b8862b;--lo:#b54a3c;--sel:#eef4f1}
 @media (prefers-color-scheme:dark){:root{--bg:#161716;--panel:#1f201f;--line:#323331;--text:#e8e6e1;--muted:#9a978f;--accent:#6cbfa5;--accent-soft:#25352f;--hi:#6cc07a;--mid:#d9a94b;--lo:#e07a6b;--sel:#26302c}}
@@ -89,7 +89,7 @@ kbd{font-size:11px;border:1px solid var(--line);border-radius:4px;padding:0 4px;
 </head>
 <body>
 <header>
-  <h1>📚 Rafta</h1>
+  <h1>📚 Kitaplık</h1>
   <span id="rootPath">Klasör seçilmedi</span>
   <span id="progress"></span>
   <button id="btnScan" title="Değişen dosyaları yeniden tara">Yeniden tara</button>
@@ -144,7 +144,7 @@ kbd{font-size:11px;border:1px solid var(--line);border-radius:4px;padding:0 4px;
 <script>
 const $ = s => document.querySelector(s);
 const TOKEN = new URLSearchParams(location.search).get('t') || '';
-const api = (p, body) => fetch(p, body ? {method:'POST', headers:{'Content-Type':'application/json', 'X-Rafta-Token':TOKEN}, body:JSON.stringify(body)} : {headers:{'X-Rafta-Token':TOKEN}}).then(r => r.json());
+const api = (p, body) => fetch(p, body ? {method:'POST', headers:{'Content-Type':'application/json', 'X-Kitaplik-Token':TOKEN}, body:JSON.stringify(body)} : {headers:{'X-Kitaplik-Token':TOKEN}}).then(r => r.json());
 const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const fold = s => String(s ?? '').toLocaleLowerCase('tr').normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/ı/g,'i');
 const sizeFmt = b => b > 1048576 ? (b/1048576).toFixed(1)+' MB' : Math.max(1, Math.round(b/1024))+' KB';
@@ -152,9 +152,9 @@ const band = s => s >= 70 ? 'hi' : s >= 40 ? 'mid' : 'lo';
 const PAGE = 300;
 
 let files = [], view = [], shown = PAGE, cur = null, selected = new Set();
-const saved = (() => { try { return JSON.parse(localStorage.getItem('rafta.ui') || localStorage.getItem('kitaplik.ui')) || {} } catch { return {} } })();
+const saved = (() => { try { return JSON.parse(localStorage.getItem('kitaplik.ui')) || {} } catch { return {} } })();
 const F = Object.assign({q:'', fav:false, folder:null, tags:[], ext:[], notes:[], smin:0, smax:100, sort:'title', dir:1}, saved);
-const persist = () => { try { localStorage.setItem('rafta.ui', JSON.stringify(F)) } catch {} };
+const persist = () => { try { localStorage.setItem('kitaplik.ui', JSON.stringify(F)) } catch {} };
 
 async function load() {
   files = await api('/api/files');

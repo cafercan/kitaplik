@@ -1,12 +1,12 @@
-# Rafta
+# Kitaplık
 
 **A lightweight desktop app to browse, tag, filter and quality-check a local e-book folder.**
 Point it at a folder of EPUBs and PDFs and get covers, metadata, a quality score for every file,
 favorites and tags, all stored locally without touching your book files.
 
-![Rafta screenshot](docs/screenshot.png)
+![Kitaplık screenshot](docs/screenshot.png)
 
-> *Rafta* is Turkish for "on the shelf". The interface is currently in Turkish.
+> *Kitaplık* is Turkish for "bookshelf". The interface is currently in Turkish.
 
 ## Features
 
@@ -32,23 +32,23 @@ favorites and tags, all stored locally without touching your book files.
 ## Install & run
 
 ```bash
-git clone https://github.com/cafercan/rafta.git
-cd rafta
+git clone https://github.com/cafercan/kitaplik.git
+cd kitaplik
 ```
 
-**Linux:** add Rafta to your application menu:
+**Linux:** add Kitaplık to your application menu:
 
 ```bash
 ./install-linux.sh              # install or update
 ./install-linux.sh --uninstall  # remove (your tags and favorites are kept)
 ```
 
-Or run it without installing: `python3 rafta.py`
+Or run it without installing: `python3 kitaplik.py`
 
-**macOS:** double-click `Rafta.command` (it installs `pywebview` on first run), or run `python3 rafta.py`.
+**macOS:** double-click `Kitaplik.command` (it installs `pywebview` on first run), or run `python3 kitaplik.py`.
 
 Options: `--browser` opens the UI in your web browser instead of a window, `--headless` runs the server only.
-Set `RAFTA_PORT` to change the local port (default `8765`).
+Set `KITAPLIK_PORT` to change the local port (default `8765`).
 
 ## Quality score
 
@@ -70,28 +70,28 @@ The score is a heuristic: it checks structure, not scan sharpness.
 ## Privacy & data
 
 Everything runs on your machine. Settings, the metadata cache, tags and favorites live in
-`~/.config/rafta/` (`config.json`, `rafta.db`). Rafta never modifies, moves or uploads your books.
+`~/.config/kitaplik/` (`config.json`, `kitaplik.db`). Kitaplık never modifies, moves or uploads your books.
 Tags and favorites are linked to each file's path inside the library folder, so renaming or moving a
-file outside Rafta drops its tags.
+file outside Kitaplık drops its tags.
 
 The UI talks to a local server bound to `127.0.0.1`. Every request must carry a random per-launch token
 and a matching `Host` header, so other websites open in your browser can't use it.
 
 ## How it works
 
-`rafta.py` starts a small HTTP server on localhost, scans the library in parallel (EPUB metadata from the
+`kitaplik.py` starts a small HTTP server on localhost, scans the library in parallel (EPUB metadata from the
 OPF file, PDF data through poppler) and caches the results in SQLite. The interface in `static/index.html`
 is plain HTML/JS shown in a native WebKit window: GTK on Linux, pywebview on macOS.
 
 ## Türkçe
 
-**Rafta**, bilgisayarındaki e-kitap klasörünü gezmek, etiketlemek, filtrelemek ve dosyaların kalitesini
+**Kitaplık**, bilgisayarındaki e-kitap klasörünü gezmek, etiketlemek, filtrelemek ve dosyaların kalitesini
 görmek için hafif bir masaüstü uygulamasıdır. Kitap dosyalarına dokunmaz; etiketler ve favoriler
-`~/.config/rafta/` altında saklanır.
+`~/.config/kitaplik/` altında saklanır.
 
-- Linux'ta kurmak için: `./install-linux.sh` (uygulama menüsünde "Rafta" olarak görünür)
-- macOS'ta: `Rafta.command` dosyasına çift tıklayın
-- Kurmadan çalıştırmak için: `python3 rafta.py`
+- Linux'ta kurmak için: `./install-linux.sh` (uygulama menüsünde "Kitaplık" olarak görünür)
+- macOS'ta: `Kitaplik.command` dosyasına çift tıklayın
+- Kurmadan çalıştırmak için: `python3 kitaplik.py`
 
 ## License
 
