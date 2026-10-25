@@ -311,13 +311,16 @@ class Handler(BaseHTTPRequestHandler):
     def log_message(self, *args):
         pass
 
-    def send(self, body, ctype="application/json; charset=utf-8", code=200):
+    def send(self, body, ctype="application/json; charset=utf-8", code=200, headers=None):
         if not isinstance(body, (bytes, bytearray)):
             body = json.dumps(body, ensure_ascii=False).encode("utf-8")
         self.send_response(code)
         self.send_header("Content-Type", ctype)
         self.send_header("Content-Length", str(len(body)))
         self.send_header("Cache-Control", "no-store")
+        self.send_header("X-Content-Type-Options", "nosniff")
+        for k, v in (headers or {}).items():
+            self.send_header(k, v)
         self.end_headers()
         self.wfile.write(body)
 
@@ -385,7 +388,10 @@ class Handler(BaseHTTPRequestHandler):
             if not data:
                 return self.send(b"", "text/plain", 404)
             ext = name.rsplit(".", 1)[-1].lower()
-            return self.send(data, {"jpg": "image/jpeg", "jpeg": "image/jpeg", "svg": "image/svg+xml"}.get(ext, f"image/{ext}"))
+            # kapak kitabın içinden gelir, güvenilmez: SVG içindeki betikler hiçbir koşulda çalışmasın
+            return self.send(data, {"jpg": "image/jpeg", "jpeg": "image/jpeg", "svg": "image/svg+xml"}.get(ext, f"image/{ext}"),
+                             headers={"Content-Security-Policy": "sandbox; default-src 'none'; style-src 'unsafe-inline'",
+                                      "Content-Disposition": f"inline; filename=cover.{ext}"})
         self.send({"error": "bulunamadı"}, code=404)
 
     def do_POST(self):
