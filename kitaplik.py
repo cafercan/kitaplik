@@ -9,6 +9,7 @@ import json
 import os
 import platform
 import re
+import secrets
 import shutil
 import sqlite3
 import subprocess
@@ -27,6 +28,8 @@ CONF_DIR = Path(os.environ.get("XDG_CONFIG_HOME", Path.home() / ".config")) / "k
 CONF_FILE = CONF_DIR / "config.json"
 DB_FILE = CONF_DIR / "kitaplik.db"
 PORT = int(os.environ.get("KITAPLIK_PORT", "8765"))
+# Her açılışta üretilen anahtar: başka sitelerin localhost API'sini kullanmasını engeller
+TOKEN = secrets.token_urlsafe(32)
 
 BOOK_EXT = {"epub", "pdf", "mobi", "azw", "azw3", "djvu", "fb2", "doc", "docx", "rtf", "txt", "cbz", "cbr"}
 MOJIBAKE = re.compile(r"[ÝÞÐýþð]|Ã[¼§¶±‡]|Ä[±Ÿ]|Å[Ÿž]|�")
@@ -313,10 +316,22 @@ class Handler(BaseHTTPRequestHandler):
     def root(self):
         return load_conf().get("root")
 
+    def allowed(self, q=None):
+        """Host başlığı (DNS rebinding) ve oturum anahtarı (CSRF) denetimi."""
+        port = self.server.server_address[1]
+        if self.headers.get("Host") not in (f"127.0.0.1:{port}", f"localhost:{port}"):
+            return False
+        token = self.headers.get("X-Kitaplik-Token") or (q or {}).get("t")
+        return secrets.compare_digest(token or "", TOKEN)
+
     def do_GET(self):
         url = urlparse(self.path)
         q = {k: v[0] for k, v in parse_qs(url.query).items()}
+        if url.path.startswith("/api/") and not self.allowed(q):
+            return self.send({"error": "yetkisiz"}, code=403)
         if url.path in ("/", "/index.html"):
+            if not self.allowed(q):
+                return self.send(b"Yetkisiz", "text/plain; charset=utf-8", 403)
             return self.send((STATIC / "index.html").read_bytes(), "text/html; charset=utf-8")
         if url.path == "/api/state":
             return self.send({"root": self.root(), "scan": scanner.state, "poppler": HAS_POPPLER})
@@ -361,6 +376,9 @@ class Handler(BaseHTTPRequestHandler):
 
     def do_POST(self):
         url = urlparse(self.path)
+        # JSON içerik türü zorunlu: tarayıcılar bunu CORS ön kontrolü olmadan gönderemez
+        if not self.allowed() or not (self.headers.get("Content-Type") or "").startswith("application/json"):
+            return self.send({"error": "yetkisiz"}, code=403)
         data = self.body()
         root = self.root()
         if url.path == "/api/root":
@@ -444,7 +462,7 @@ def main():
     root = load_conf().get("root")
     if root and os.path.isdir(root):
         scanner.start(root)  # değişen dosyaları güncelle
-    url = f"http://127.0.0.1:{server.server_address[1]}/"
+    url = f"http://127.0.0.1:{server.server_address[1]}/?t={TOKEN}"
     try:
         if "--headless" in sys.argv:
             threading.Event().wait()

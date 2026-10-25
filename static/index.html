@@ -120,7 +120,8 @@ kbd{font-size:11px;border:1px solid var(--line);border-radius:4px;padding:0 4px;
 
 <script>
 const $ = s => document.querySelector(s);
-const api = (p, body) => fetch(p, body ? {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body)} : {}).then(r => r.json());
+const TOKEN = new URLSearchParams(location.search).get('t') || '';
+const api = (p, body) => fetch(p, body ? {method:'POST', headers:{'Content-Type':'application/json', 'X-Kitaplik-Token':TOKEN}, body:JSON.stringify(body)} : {headers:{'X-Kitaplik-Token':TOKEN}}).then(r => r.json());
 const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const fold = s => String(s ?? '').toLocaleLowerCase('tr').normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/ı/g,'i');
 const sizeFmt = b => b > 1048576 ? (b/1048576).toFixed(1)+' MB' : Math.max(1, Math.round(b/1024))+' KB';
@@ -223,7 +224,7 @@ function renderDetail() {
   const el = $('#detail');
   if (!cur) { el.innerHTML = '<p class="empty">Bir kitap seç</p>'; return; }
   const f = cur, row = (k, v) => v ? `<dt>${k}</dt><dd>${esc(v)}</dd>` : '';
-  el.innerHTML = `${f.ext === 'epub' ? `<img id="cover" src="/api/cover?path=${encodeURIComponent(f.path)}" onerror="this.remove()">` : ''}
+  el.innerHTML = `${f.ext === 'epub' ? `<img id="cover" src="/api/cover?t=${encodeURIComponent(TOKEN)}&path=${encodeURIComponent(f.path)}" onerror="this.remove()">` : ''}
     <h2>${esc(f.title)}</h2><div class="author">${esc(f.author) || '<i>yazar bilinmiyor</i>'}</div>
     <div class="actions"><button class="primary" id="dOpen">Aç</button><button id="dReveal">Klasörde göster</button></div>
     <div><span class="badge b-${band(f.score)}">${f.score}</span> <span style="color:var(--muted);font-size:13px">${esc(f.notes) || 'sorun bulunmadı'}</span></div>
