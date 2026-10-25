@@ -17,7 +17,7 @@ Yalnızca Python 3 standart kütüphanesini kullanır. Arayüz yerel bir pencere
 
 ```bash
 python3 kitaplik.py
-./install-linux.sh   # isteğe bağlı: uygulama menüsüne kısayol ekler
+./install-linux.sh   # ~/.local/share/kitaplik/app altına kurar, menüye ekler
 ```
 
 **macOS:** `Kitaplik.command` dosyasına çift tıklayın (ilk açılışta `pywebview` kurulur) ya da:

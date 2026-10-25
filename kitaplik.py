@@ -420,9 +420,15 @@ def gtk_window(url):
     import gi
     gi.require_version("Gtk", "3.0")
     gi.require_version("WebKit2", "4.1")
-    from gi.repository import Gtk, WebKit2
+    from gi.repository import GLib, Gtk, WebKit2
 
+    # dock'ta menüdeki kısayolla eşleşsin (StartupWMClass=kitaplik)
+    GLib.set_prgname("kitaplik")
+    GLib.set_application_name("Kitaplık")
     win = Gtk.Window(title="Kitaplık")
+    icon = APP_DIR / "kitaplik.svg"
+    if icon.exists():
+        win.set_icon_from_file(str(icon))
     win.set_default_size(1400, 860)
     view = WebKit2.WebView()
     view.load_uri(url)
