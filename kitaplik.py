@@ -523,6 +523,7 @@ def selftest():
     import time
     import urllib.request
 
+    log("selftest: başlıyor")
     lib = tempfile.mkdtemp(prefix="kitaplik-test-")
     os.makedirs(os.path.join(lib, "Roman"))
     with zipfile.ZipFile(os.path.join(lib, "Roman", "Yazar Adı - Deneme Kitabı.epub"), "w") as z:
@@ -535,9 +536,13 @@ def selftest():
     base = f"http://127.0.0.1:{server.server_address[1]}"
     headers = {"X-Kitaplik-Token": TOKEN, "Content-Type": "application/json"}
 
+    # sistem vekil sunucusu ayarları (Windows kayıt defteri) yerel isteği yönlendirmesin
+    opener = urllib.request.build_opener(urllib.request.ProxyHandler({}))
+
     def call(path, body=None):
+        log(f"selftest: {path.split('?')[0]}")
         data = json.dumps(body).encode() if body is not None else None
-        with urllib.request.urlopen(urllib.request.Request(base + path, data, headers)) as r:
+        with opener.open(urllib.request.Request(base + path, data, headers), timeout=20) as r:
             return r.read()
 
     conf = load_conf()
@@ -549,13 +554,14 @@ def selftest():
                 break
             time.sleep(0.1)
         files = json.loads(call("/api/files"))
-        assert len(files) == 1, f"beklenen 1 kitap, bulunan {len(files)}"
+        assert len(files) == 1, f"beklenen 1 kitap, bulunan {len(files)}; tarama: {json.loads(call('/api/state'))['scan']}"
         f = files[0]
         assert f["path"] == "Roman/Yazar Adı - Deneme Kitabı.epub", f["path"]
         assert f["author"] == "Yazar Adı" and f["score"] >= 40, f
         call("/api/fav", {"paths": [f["path"]], "on": True})
         assert json.loads(call("/api/files"))[0]["fav"], "favori kaydedilmedi"
         if platform.system() != "Linux":
+            log("selftest: pencere kütüphanesi")
             import webview  # noqa: F401  paketlenmiş uygulamada pencere kütüphanesi olmalı
     finally:
         save_conf(conf)  # kullanıcının seçili klasörünü geri koy
