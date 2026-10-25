@@ -76,6 +76,13 @@ dialog::backdrop{background:#0006}
 #dirList{height:320px;overflow:auto;border:1px solid var(--line);border-radius:6px;margin:8px 0}
 #dirList div{padding:5px 10px;cursor:pointer;border-bottom:1px solid var(--line)}
 #dirList div:hover{background:var(--sel)}
+#tagAdmin{width:min(520px,92vw)}
+#taList{max-height:420px;overflow:auto;margin:10px 0;border:1px solid var(--line);border-radius:6px}
+#taList .ta{display:flex;gap:6px;align-items:center;padding:6px 8px;border-bottom:1px solid var(--line)}
+#taList .ta input{flex:1}
+#taList .ta .n{color:var(--muted);font-size:12px;width:56px;text-align:right}
+#taList .ta button.del{color:var(--lo)}
+.hint{color:var(--muted);font-size:12px}
 .row{display:flex;gap:8px;align-items:center}
 kbd{font-size:11px;border:1px solid var(--line);border-radius:4px;padding:0 4px;color:var(--muted)}
 </style>
@@ -93,7 +100,7 @@ kbd{font-size:11px;border:1px solid var(--line);border-radius:4px;padding:0 4px;
     <div class="sec"><input id="q" type="search" placeholder="Ara: başlık, yazar, yayınevi…"></div>
     <div class="sec"><button id="favBtn"><span class="star on">★</span> Favorilerim <span class="n" id="favN">0</span></button></div>
     <div class="sec"><h3>Klasör <a data-clear="folder">temizle</a></h3><div id="fFolder"></div></div>
-    <div class="sec"><h3>Etiket <a data-clear="tags">temizle</a></h3><div id="fTags"></div></div>
+    <div class="sec"><h3>Etiket <span><a id="tagManage">yönet</a> · <a data-clear="tags">temizle</a></span></h3><div id="fTags"></div></div>
     <div class="sec"><h3>Kalite puanı</h3>
       <div class="range"><input id="smin" type="text" inputmode="numeric" value="0"> – <input id="smax" type="text" inputmode="numeric" value="100"></div>
       <div id="fScore" style="margin-top:6px"></div></div>
@@ -125,6 +132,13 @@ kbd{font-size:11px;border:1px solid var(--line);border-radius:4px;padding:0 4px;
   <div class="row" style="margin-top:8px"><button id="dUp">↑ Üst</button><input id="dPath" type="text"></div>
   <div id="dirList"></div>
   <div class="row" style="justify-content:flex-end"><button id="dCancel">Vazgeç</button><button id="dOk" class="primary">Bu klasörü kullan</button></div>
+</dialog>
+
+<dialog id="tagAdmin">
+  <b>Etiketleri yönet</b>
+  <div class="hint">Adı değiştirip Enter'a ya da Kaydet'e bas. Var olan bir etiketin adını yazarsan ikisi birleşir.</div>
+  <div id="taList"></div>
+  <div class="row" style="justify-content:flex-end"><button id="taClose" class="primary">Kapat</button></div>
 </dialog>
 
 <script>
@@ -294,7 +308,7 @@ $('#favBtn').onclick = () => { F.fav = !F.fav; shown = PAGE; render(); };
 $('#bulkClear').onclick = () => { selected.clear(); $('#selAll').checked = false; renderTable(); };
 
 document.onkeydown = e => {
-  if (e.target.matches('input[type=text],input[type=search]') || $('#dlg').open) return;
+  if (e.target.matches('input[type=text],input[type=search]') || $('#dlg').open || $('#tagAdmin').open) return;
   const i = cur ? view.indexOf(cur) : -1;
   if (e.key === 'ArrowDown') { e.preventDefault(); if (i + 1 >= shown) { shown += PAGE; } select(Math.min(view.length - 1, i + 1)); }
   else if (e.key === 'ArrowUp') { e.preventDefault(); select(Math.max(0, i - 1)); }
@@ -318,6 +332,39 @@ $('#dPath').onkeydown = e => { if (e.key === 'Enter') browse(e.target.value); };
 $('#dCancel').onclick = () => $('#dlg').close();
 $('#dOk').onclick = async () => { const r = await api('/api/root', {path: $('#dPath').value}); if (r.error) return alert(r.error);
   $('#dlg').close(); Object.assign(F, {folder: null, tags: [], ext: [], notes: []}); cur = null; selected.clear(); poll(); };
+// etiket yönetimi
+function renderTagAdmin() {
+  const counts = [...count(files, f => f.tags)].sort((a, b) => a[0].localeCompare(b[0], 'tr'));
+  $('#taList').innerHTML = counts.map(([t, n]) => `<div class="ta" data-t="${esc(t)}">
+    <input type="text" value="${esc(t)}"><span class="n">${n} kitap</span>
+    <button class="save">Kaydet</button><button class="del">Sil</button></div>`).join('')
+    || '<div class="ta hint">Henüz etiket yok.</div>';
+}
+async function tagAdmin(action, tag, to) {
+  if (action === 'delete' && !confirm(`"${tag}" etiketi tüm kitaplardan kaldırılsın mı?`)) return;
+  if (action === 'rename') {
+    to = to.trim();
+    if (!to || to === tag) return;
+    const exists = files.some(f => f.tags.includes(to));
+    if (exists && !confirm(`"${to}" etiketi zaten var. "${tag}" onunla birleştirilsin mi?`)) return;
+  }
+  await api('/api/tag-admin', {action, tag, to});
+  F.tags = F.tags.flatMap(t => t !== tag ? [t] : action === 'rename' ? [to] : []);
+  await load();
+  renderTagAdmin();
+}
+$('#tagManage').onclick = () => { renderTagAdmin(); $('#tagAdmin').showModal(); };
+$('#taClose').onclick = () => $('#tagAdmin').close();
+$('#taList').onclick = e => {
+  const row = e.target.closest('.ta[data-t]'); if (!row) return;
+  if (e.target.classList.contains('del')) tagAdmin('delete', row.dataset.t);
+  if (e.target.classList.contains('save')) tagAdmin('rename', row.dataset.t, row.querySelector('input').value);
+};
+$('#taList').onkeydown = e => {
+  const row = e.target.closest('.ta[data-t]');
+  if (row && e.key === 'Enter') tagAdmin('rename', row.dataset.t, e.target.value);
+};
+
 $('#btnScan').onclick = async () => { await api('/api/scan', {}); poll(); };
 
 let polling = false;

@@ -5,7 +5,7 @@ Seçilen bir klasör altındaki e-kitaplar (EPUB, PDF, MOBI, DJVU, DOC…) için
 - **Meta bilgi:** yazar, başlık, yayınevi, dil, yıl, konu, açıklama, kapak, sayfa/karakter sayısı
 - **Kalite puanı (0–100):** metin tabanlı mı, taranmış mı, OCR var mı, içindekiler/kapak, bozuk Türkçe karakter
 - **Favoriler:** ★ ile işaretlenir, kalıcı olarak saklanır; "Favorilerim" düğmesiyle listelenir
-- **Etiketleme:** tek tek ya da çoklu seçimle toplu etiket ekleme/çıkarma
+- **Etiketleme:** tek tek ya da çoklu seçimle toplu etiket ekleme/çıkarma; "yönet" ekranından etiketi tüm kitaplardan silme, yeniden adlandırma, birleştirme
 - **Filtreleme:** arama, klasör, etiket, biçim, puan aralığı, kalite notları
 - **Aç:** dosyayı sistemin varsayılan uygulamasında açar ya da klasörde gösterir
 - Son seçilen klasör hatırlanır; açılışta yalnızca değişen dosyalar yeniden taranır.

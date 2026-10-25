@@ -416,6 +416,18 @@ class Handler(BaseHTTPRequestHandler):
             con.commit()
             con.close()
             return self.send({"ok": True})
+        if url.path == "/api/tag-admin":
+            # etiketi tüm kitaplarda yeniden adlandır (hedef varsa birleşir) ya da sil
+            action, tag, to = data.get("action"), data.get("tag", ""), (data.get("to") or "").strip()
+            con = db()
+            if action == "rename" and to and to != tag:
+                con.execute("INSERT OR IGNORE INTO tags SELECT root, path, ? FROM tags WHERE root=? AND tag=?", (to, root, tag))
+                con.execute("DELETE FROM tags WHERE root=? AND tag=?", (root, tag))
+            elif action == "delete":
+                con.execute("DELETE FROM tags WHERE root=? AND tag=?", (root, tag))
+            con.commit()
+            con.close()
+            return self.send({"ok": True})
         if url.path == "/api/fav":
             con = db()
             rows = [(root, p) for p in data.get("paths", [])]
