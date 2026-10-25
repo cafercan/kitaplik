@@ -561,8 +561,11 @@ def selftest():
         call("/api/fav", {"paths": [f["path"]], "on": True})
         assert json.loads(call("/api/files"))[0]["fav"], "favori kaydedilmedi"
         if platform.system() != "Linux":
+            # paketlenmiş uygulamada pencere kütüphanesi bulunmalı; yüklemiyoruz çünkü
+            # Windows'ta .NET köprüsünü başlatır ve masaüstü olmayan derleme sunucusunda bekler
+            import importlib.util
             log("selftest: pencere kütüphanesi")
-            import webview  # noqa: F401  paketlenmiş uygulamada pencere kütüphanesi olmalı
+            assert importlib.util.find_spec("webview") is not None, "pywebview pakette yok"
     finally:
         save_conf(conf)  # kullanıcının seçili klasörünü geri koy
         con = db()
