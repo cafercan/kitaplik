@@ -59,7 +59,9 @@ jobs:
       - name: Paketlenmiş uygulamayı dene
         shell: pwsh
         run: |
+          $env:KITAPLIK_LOG = "$PWD\selftest.log"
           $p = Start-Process dist\Kitaplik\Kitaplik.exe -ArgumentList '--selftest' -Wait -PassThru
+          if (Test-Path selftest.log) { Get-Content selftest.log }
           if ($p.ExitCode -ne 0) { throw "selftest başarısız: $($p.ExitCode)" }
       - name: Inno Setup kurulumu
         shell: pwsh

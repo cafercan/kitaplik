@@ -506,9 +506,13 @@ def show_window(url):
 
 
 def log(msg):
-    # konsolsuz paketlenmiş uygulamalarda (Windows --windowed) stdout yoktur
+    # konsolsuz paketlenmiş uygulamalarda (Windows --windowed) stdout yoktur;
+    # KITAPLIK_LOG verilirse mesajlar o dosyaya da yazılır
     if sys.stdout:
         print(msg, flush=True)
+    if os.environ.get("KITAPLIK_LOG"):
+        with open(os.environ["KITAPLIK_LOG"], "a", encoding="utf-8") as f:
+            f.write(msg + "\n")
 
 
 def selftest():
@@ -570,7 +574,8 @@ def main():
         try:
             selftest()
         except BaseException as e:  # hata penceresi açılmasın, çıkış koduyla bildir
-            log(f"selftest HATA: {type(e).__name__}: {e}")
+            import traceback
+            log(f"selftest HATA: {type(e).__name__}: {e}\n{traceback.format_exc()}")
             os._exit(1)
         os._exit(0)
     try:
