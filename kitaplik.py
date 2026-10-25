@@ -22,7 +22,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import parse_qs, urlparse
 
-__version__ = "0.1.0"
+__version__ = "0.1.1"
 
 APP_DIR = Path(__file__).resolve().parent
 # PyInstaller ile paketlendiğinde arayüz dosyaları geçici açma klasöründe durur

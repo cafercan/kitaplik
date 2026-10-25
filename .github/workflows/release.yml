@@ -31,14 +31,22 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: .deb paketi
-        run: packaging/linux/build-deb.sh dist
-      - name: Paketten çıkan uygulamayı dene
+      - name: .deb ve taşınabilir paket
+        run: |
+          packaging/linux/build-deb.sh dist
+          packaging/linux/build-tar.sh dist
+      - name: Paketlerden çıkan uygulamayı dene
         run: |
           mkdir x && dpkg-deb -x dist/*.deb x
           python3 x/usr/lib/kitaplik/kitaplik.py --selftest
+          mkdir y && tar -C y -xzf dist/*-linux-portable.tar.gz
+          y/kitaplik/kitaplik --selftest
       - uses: actions/upload-artifact@v4
-        with: { name: linux, path: dist/*.deb }
+        with:
+          name: linux
+          path: |
+            dist/*.deb
+            dist/*.tar.gz
 
   windows:
     needs: version

@@ -30,6 +30,7 @@ Get the package for your system from the [latest release](https://github.com/caf
 | Windows 10/11 | `kitaplik-<ver>-windows-x64-setup.exe` | Per-user install, no admin rights needed |
 | macOS 11+ (Apple silicon) | `kitaplik-<ver>-macos-arm64.dmg` | Not notarized: on first launch right-click the app and choose **Open** |
 | Linux (Debian, Ubuntu, Mint) | `kitaplik-<ver>-linux-all.deb` | `sudo apt install ./kitaplik-<ver>-linux-all.deb` |
+| Linux, portable | `kitaplik-<ver>-linux-portable.tar.gz` | Unpack anywhere and run `kitaplik/kitaplik`; needs `python3-gi` and `gir1.2-webkit2-4.1` |
 
 Every release includes `SHA256SUMS.txt`. The Windows and macOS packages bundle Python; nothing else to install.
 
