@@ -1,0 +1,317 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Kitaplık</title>
+<style>
+:root{--bg:#f6f5f2;--panel:#fff;--line:#e3e1db;--text:#22211f;--muted:#76736c;--accent:#2f6f5e;--accent-soft:#e3efea;--hi:#3c8a4a;--mid:#b8862b;--lo:#b54a3c;--sel:#eef4f1}
+@media (prefers-color-scheme:dark){:root{--bg:#161716;--panel:#1f201f;--line:#323331;--text:#e8e6e1;--muted:#9a978f;--accent:#6cbfa5;--accent-soft:#25352f;--hi:#6cc07a;--mid:#d9a94b;--lo:#e07a6b;--sel:#26302c}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font:14px/1.45 system-ui,-apple-system,"Segoe UI",sans-serif;height:100vh;display:flex;flex-direction:column;overflow:hidden}
+button,input,select{font:inherit;color:inherit}
+button{background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:5px 11px;cursor:pointer}
+button:hover{border-color:var(--accent)}
+button.primary{background:var(--accent);border-color:var(--accent);color:#fff}
+@media (prefers-color-scheme:dark){button.primary{color:#0f1a16}}
+input[type=text],input[type=search]{background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:6px 9px;width:100%}
+input:focus{outline:2px solid var(--accent-soft);border-color:var(--accent)}
+header{display:flex;align-items:center;gap:10px;padding:9px 14px;border-bottom:1px solid var(--line);background:var(--panel)}
+header h1{font-size:16px;margin:0 8px 0 0;letter-spacing:.2px}
+#rootPath{color:var(--muted);font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;min-width:0}
+#progress{font-size:12px;color:var(--accent)}
+main{flex:1;display:grid;grid-template-columns:250px 1fr 330px;min-height:0}
+aside,#detail{background:var(--panel);overflow:auto;min-height:0}
+aside{border-right:1px solid var(--line);padding:12px}
+#detail{border-left:1px solid var(--line);padding:14px}
+.sec{margin-bottom:16px}
+.sec h3{font-size:11px;text-transform:uppercase;letter-spacing:.6px;color:var(--muted);margin:0 0 6px;display:flex;justify-content:space-between}
+.sec h3 a{text-transform:none;letter-spacing:0;color:var(--accent);cursor:pointer}
+.opt{display:flex;align-items:center;gap:6px;padding:2px 4px;border-radius:5px;cursor:pointer;font-size:13px;user-select:none}
+.opt:hover{background:var(--sel)}
+.opt.on{background:var(--accent-soft);color:var(--accent);font-weight:600}
+.opt .n{margin-left:auto;color:var(--muted);font-size:11px;font-weight:400}
+.opt.sub{padding-left:18px}
+.range{display:flex;gap:6px;align-items:center;font-size:13px}
+.range input{width:60px}
+#list{display:flex;flex-direction:column;min-height:0}
+#toolbar{display:flex;gap:8px;align-items:center;padding:8px 12px;border-bottom:1px solid var(--line);font-size:13px;color:var(--muted);flex-wrap:wrap}
+#bulk{display:none;gap:6px;align-items:center;color:var(--text)}
+#bulk.on{display:flex}
+#bulk input{width:150px}
+#tableWrap{overflow:auto;flex:1}
+table{border-collapse:collapse;width:100%;font-size:13px}
+th{position:sticky;top:0;background:var(--bg);text-align:left;font-weight:600;color:var(--muted);padding:6px 8px;border-bottom:1px solid var(--line);cursor:pointer;white-space:nowrap;user-select:none;font-size:12px}
+th.sorted{color:var(--accent)}
+td{padding:5px 8px;border-bottom:1px solid var(--line);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:0}
+tr{cursor:default}
+tbody tr:hover{background:var(--sel)}
+tr.cur{background:var(--accent-soft)!important}
+td.c{width:28px;max-width:28px}
+.badge{display:inline-block;min-width:30px;text-align:center;border-radius:10px;padding:0 6px;font-size:12px;font-weight:600;color:#fff}
+.b-hi{background:var(--hi)}.b-mid{background:var(--mid)}.b-lo{background:var(--lo)}
+@media (prefers-color-scheme:dark){.badge{color:#111}}
+.fmt{font-size:11px;text-transform:uppercase;color:var(--muted);letter-spacing:.4px}
+.tag{display:inline-flex;align-items:center;gap:4px;background:var(--accent-soft);color:var(--accent);border-radius:10px;padding:0 8px;font-size:12px;margin:0 3px 3px 0}
+.tag b{cursor:pointer;font-weight:400;opacity:.7}
+#cover{width:100%;max-height:300px;object-fit:contain;border-radius:6px;background:var(--bg);margin-bottom:10px}
+#detail h2{font-size:17px;margin:0 0 2px}
+#detail .author{color:var(--muted);margin-bottom:12px}
+dl{display:grid;grid-template-columns:90px 1fr;gap:4px 8px;font-size:13px;margin:12px 0}
+dt{color:var(--muted)}dd{margin:0;word-break:break-word}
+.desc{font-size:13px;color:var(--muted);max-height:180px;overflow:auto;border-top:1px solid var(--line);padding-top:8px}
+.actions{display:flex;gap:6px;margin:10px 0}
+.empty{color:var(--muted);text-align:center;margin-top:40%}
+#more{margin:10px auto;display:block}
+dialog{border:1px solid var(--line);border-radius:10px;background:var(--panel);color:var(--text);width:min(560px,92vw);padding:16px}
+dialog::backdrop{background:#0006}
+#dirList{height:320px;overflow:auto;border:1px solid var(--line);border-radius:6px;margin:8px 0}
+#dirList div{padding:5px 10px;cursor:pointer;border-bottom:1px solid var(--line)}
+#dirList div:hover{background:var(--sel)}
+.row{display:flex;gap:8px;align-items:center}
+kbd{font-size:11px;border:1px solid var(--line);border-radius:4px;padding:0 4px;color:var(--muted)}
+</style>
+</head>
+<body>
+<header>
+  <h1>📚 Kitaplık</h1>
+  <span id="rootPath">Klasör seçilmedi</span>
+  <span id="progress"></span>
+  <button id="btnScan" title="Değişen dosyaları yeniden tara">Yeniden tara</button>
+  <button id="btnRoot" class="primary">Klasör seç</button>
+</header>
+<main>
+  <aside>
+    <div class="sec"><input id="q" type="search" placeholder="Ara: başlık, yazar, yayınevi…"></div>
+    <div class="sec"><h3>Klasör <a data-clear="folder">temizle</a></h3><div id="fFolder"></div></div>
+    <div class="sec"><h3>Etiket <a data-clear="tags">temizle</a></h3><div id="fTags"></div></div>
+    <div class="sec"><h3>Kalite puanı</h3>
+      <div class="range"><input id="smin" type="text" inputmode="numeric" value="0"> – <input id="smax" type="text" inputmode="numeric" value="100"></div>
+      <div id="fScore" style="margin-top:6px"></div></div>
+    <div class="sec"><h3>Biçim <a data-clear="ext">temizle</a></h3><div id="fExt"></div></div>
+    <div class="sec"><h3>Not <a data-clear="notes">temizle</a></h3><div id="fNotes"></div></div>
+  </aside>
+  <section id="list">
+    <div id="toolbar">
+      <span id="count"></span>
+      <div id="bulk"><b id="selCount"></b> seçili ·
+        <input id="bulkTag" type="text" placeholder="etiket ekle/çıkar" list="tagNames">
+        <button id="bulkAdd">Ekle</button><button id="bulkRemove">Çıkar</button><button id="bulkClear">Seçimi bırak</button></div>
+      <span style="margin-left:auto"><kbd>↑↓</kbd> gez · <kbd>Enter</kbd> aç · <kbd>Space</kbd> seç</span>
+    </div>
+    <div id="tableWrap"><table>
+      <thead><tr><th class="c"><input type="checkbox" id="selAll"></th>
+        <th data-k="title">Başlık</th><th data-k="author">Yazar</th><th data-k="folder">Klasör</th>
+        <th data-k="ext" style="width:60px">Biçim</th><th data-k="score" style="width:62px">Puan</th>
+        <th data-k="size" style="width:74px">Boyut</th><th data-k="tags">Etiketler</th></tr></thead>
+      <tbody id="rows"></tbody></table>
+      <button id="more">Daha fazla göster</button></div>
+  </section>
+  <section id="detail"><p class="empty">Bir kitap seç</p></section>
+</main>
+<datalist id="tagNames"></datalist>
+
+<dialog id="dlg">
+  <b>Kitap klasörünü seç</b>
+  <div class="row" style="margin-top:8px"><button id="dUp">↑ Üst</button><input id="dPath" type="text"></div>
+  <div id="dirList"></div>
+  <div class="row" style="justify-content:flex-end"><button id="dCancel">Vazgeç</button><button id="dOk" class="primary">Bu klasörü kullan</button></div>
+</dialog>
+
+<script>
+const $ = s => document.querySelector(s);
+const api = (p, body) => fetch(p, body ? {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body)} : {}).then(r => r.json());
+const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const fold = s => String(s ?? '').toLocaleLowerCase('tr').normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/ı/g,'i');
+const sizeFmt = b => b > 1048576 ? (b/1048576).toFixed(1)+' MB' : Math.max(1, Math.round(b/1024))+' KB';
+const band = s => s >= 70 ? 'hi' : s >= 40 ? 'mid' : 'lo';
+const PAGE = 300;
+
+let files = [], view = [], shown = PAGE, cur = null, selected = new Set();
+const saved = (() => { try { return JSON.parse(localStorage.getItem('kitaplik.ui')) || {} } catch { return {} } })();
+const F = Object.assign({q:'', folder:null, tags:[], ext:[], notes:[], smin:0, smax:100, sort:'title', dir:1}, saved);
+const persist = () => { try { localStorage.setItem('kitaplik.ui', JSON.stringify(F)) } catch {} };
+
+async function load() {
+  files = await api('/api/files');
+  for (const f of files) {
+    const parts = f.path.split('/');
+    f.folder = parts.slice(0, -1).join('/');
+    f.top = parts.length > 1 ? parts[0] : '(kök)';
+    f.second = parts.length > 2 ? parts[0] + '/' + parts[1] : null;
+    f._s = fold([f.title, f.author, f.publisher, f.subjects, f.path, f.tags.join(' ')].join(' '));
+  }
+  if (cur) cur = files.find(f => f.path === cur.path) || null;
+  render();
+}
+
+function matches(f, skip) {
+  if (F.q && !fold(F.q).split(/\s+/).every(w => f._s.includes(w))) return false;
+  if (skip !== 'folder' && F.folder && !(f.folder === F.folder || f.folder.startsWith(F.folder + '/'))) return false;
+  if (skip !== 'tags' && F.tags.length && !F.tags.every(t => t === '∅' ? !f.tags.length : f.tags.includes(t))) return false;
+  if (skip !== 'ext' && F.ext.length && !F.ext.includes(f.ext)) return false;
+  if (skip !== 'notes' && F.notes.length && !F.notes.some(n => (f.notes || '').includes(n))) return false;
+  if (f.score < F.smin || f.score > F.smax) return false;
+  return true;
+}
+
+function facet(el, key, entries, multi) {
+  el.innerHTML = entries.map(([v, label, n, cls]) => {
+    const on = multi ? F[key].includes(v) : F[key] === v;
+    return `<div class="opt ${on ? 'on' : ''} ${cls || ''}" data-v="${esc(v)}">${esc(label)}<span class="n">${n}</span></div>`;
+  }).join('') || '<div class="opt" style="color:var(--muted)">—</div>';
+  el.onclick = e => {
+    const o = e.target.closest('.opt[data-v]'); if (!o) return;
+    const v = o.dataset.v;
+    if (multi) F[key] = F[key].includes(v) ? F[key].filter(x => x !== v) : [...F[key], v];
+    else F[key] = F[key] === v ? null : v;
+    shown = PAGE; render();
+  };
+}
+
+function count(list, fn) { const m = new Map(); for (const f of list) for (const k of [].concat(fn(f))) if (k) m.set(k, (m.get(k) || 0) + 1); return m; }
+
+function renderFacets() {
+  const byFolder = files.filter(f => matches(f, 'folder'));
+  const tops = count(byFolder, f => f.top), seconds = count(byFolder, f => f.second);
+  const folderEntries = [];
+  for (const [t, n] of [...tops].sort((a, b) => a[0].localeCompare(b[0], 'tr'))) {
+    folderEntries.push([t, t, n]);
+    if (F.folder && (F.folder === t || F.folder.startsWith(t + '/')))
+      for (const [s, m] of [...seconds].filter(([s]) => s.startsWith(t + '/')).sort((a, b) => a[0].localeCompare(b[0], 'tr')))
+        folderEntries.push([s, s.slice(t.length + 1), m, 'sub']);
+  }
+  facet($('#fFolder'), 'folder', folderEntries, false);
+
+  const byTag = files.filter(f => matches(f, 'tags'));
+  const tc = count(byTag, f => f.tags);
+  const untagged = byTag.filter(f => !f.tags.length).length;
+  facet($('#fTags'), 'tags', [...[...tc].sort((a, b) => b[1] - a[1]).map(([t, n]) => [t, t, n]), ['∅', '(etiketsiz)', untagged]], true);
+  $('#tagNames').innerHTML = [...count(files, f => f.tags).keys()].map(t => `<option value="${esc(t)}">`).join('');
+
+  facet($('#fExt'), 'ext', [...count(files.filter(f => matches(f, 'ext')), f => f.ext)].sort((a, b) => b[1] - a[1]).map(([e, n]) => [e, e.toUpperCase(), n]), true);
+  facet($('#fNotes'), 'notes', [...count(files.filter(f => matches(f, 'notes')), f => (f.notes || '').split(', ').map(s => s.replace(/^\d+ sayfa$/, 'az sayfa')))].sort((a, b) => b[1] - a[1]).map(([e, n]) => [e === 'az sayfa' ? ' sayfa' : e, e, n]), true);
+
+  const bands = [['70-100', 'İyi (70+)'], ['40-69', 'Orta (40–69)'], ['0-39', 'Düşük (<40)']];
+  $('#fScore').innerHTML = bands.map(([r, l]) => { const [a, b] = r.split('-').map(Number); const n = files.filter(f => f.score >= a && f.score <= b && matches({...f, score: 50})).length;
+    return `<div class="opt ${F.smin === a && F.smax === b ? 'on' : ''}" data-r="${r}">${l}<span class="n">${n}</span></div>` }).join('');
+  $('#fScore').onclick = e => { const o = e.target.closest('[data-r]'); if (!o) return; const [a, b] = o.dataset.r.split('-').map(Number);
+    if (F.smin === a && F.smax === b) [F.smin, F.smax] = [0, 100]; else [F.smin, F.smax] = [a, b]; shown = PAGE; render(); };
+  $('#smin').value = F.smin; $('#smax').value = F.smax;
+}
+
+function renderTable() {
+  view = files.filter(f => matches(f));
+  const k = F.sort, d = F.dir;
+  view.sort((a, b) => { const x = k === 'tags' ? a.tags.join() : a[k], y = k === 'tags' ? b.tags.join() : b[k];
+    return (typeof x === 'number' ? x - y : String(x).localeCompare(String(y), 'tr')) * d; });
+  document.querySelectorAll('th[data-k]').forEach(th => { th.classList.toggle('sorted', th.dataset.k === k);
+    th.textContent = th.textContent.replace(/ [▲▼]$/, '') + (th.dataset.k === k ? (d > 0 ? ' ▲' : ' ▼') : ''); });
+  $('#rows').innerHTML = view.slice(0, shown).map((f, i) => `<tr data-i="${i}" class="${cur && cur.path === f.path ? 'cur' : ''}">
+    <td class="c"><input type="checkbox" ${selected.has(f.path) ? 'checked' : ''}></td>
+    <td title="${esc(f.title)}">${esc(f.title)}</td><td title="${esc(f.author)}">${esc(f.author)}</td>
+    <td title="${esc(f.folder)}" style="color:var(--muted)">${esc(f.folder)}</td>
+    <td class="fmt">${esc(f.ext)}</td><td><span class="badge b-${band(f.score)}" title="${esc(f.notes)}">${f.score}</span></td>
+    <td style="color:var(--muted)">${sizeFmt(f.size)}</td><td>${f.tags.map(t => `<span class="tag">${esc(t)}</span>`).join('')}</td></tr>`).join('');
+  $('#more').style.display = view.length > shown ? '' : 'none';
+  $('#count').textContent = `${view.length.toLocaleString('tr')} / ${files.length.toLocaleString('tr')} kitap`;
+  $('#bulk').classList.toggle('on', selected.size > 0);
+  $('#selCount').textContent = selected.size;
+}
+
+function renderDetail() {
+  const el = $('#detail');
+  if (!cur) { el.innerHTML = '<p class="empty">Bir kitap seç</p>'; return; }
+  const f = cur, row = (k, v) => v ? `<dt>${k}</dt><dd>${esc(v)}</dd>` : '';
+  el.innerHTML = `${f.ext === 'epub' ? `<img id="cover" src="/api/cover?path=${encodeURIComponent(f.path)}" onerror="this.remove()">` : ''}
+    <h2>${esc(f.title)}</h2><div class="author">${esc(f.author) || '<i>yazar bilinmiyor</i>'}</div>
+    <div class="actions"><button class="primary" id="dOpen">Aç</button><button id="dReveal">Klasörde göster</button></div>
+    <div><span class="badge b-${band(f.score)}">${f.score}</span> <span style="color:var(--muted);font-size:13px">${esc(f.notes) || 'sorun bulunmadı'}</span></div>
+    <dl>${row('Biçim', f.ext.toUpperCase())}${row('Boyut', sizeFmt(f.size))}${row('Yayınevi', f.publisher)}${row('Dil', f.language)}${row('Yıl', f.year)}
+      ${row('Sayfa', f.pages || '')}${row('Metin', f.chars ? f.chars.toLocaleString('tr') + ' karakter' : '')}${row('İçindekiler', f.toc ? f.toc + ' başlık' : '')}
+      ${row('Konular', f.subjects)}${row('Dosya', f.path)}</dl>
+    <div class="sec"><h3>Etiketler</h3><div id="dTags">${f.tags.map(t => `<span class="tag">${esc(t)}<b data-t="${esc(t)}">✕</b></span>`).join('')}</div>
+      <input id="dTagIn" type="text" placeholder="etiket yaz, Enter" list="tagNames" style="margin-top:4px"></div>
+    ${f.description ? `<div class="desc">${esc(f.description)}</div>` : ''}`;
+  $('#dOpen').onclick = () => openFile(f);
+  $('#dReveal').onclick = () => api('/api/open', {path: f.path, reveal: true});
+  $('#dTags').onclick = e => { const t = e.target.dataset.t; if (t) tag([f.path], [], [t]); };
+  $('#dTagIn').onkeydown = e => { if (e.key === 'Enter' && e.target.value.trim()) { tag([f.path], e.target.value.split(',').map(s => s.trim()), []); } };
+}
+
+function render() { persist(); renderFacets(); renderTable(); renderDetail(); $('#q').value = F.q; }
+const openFile = f => api('/api/open', {path: f.path});
+
+async function tag(paths, add, remove) {
+  await api('/api/tags', {paths, add, remove});
+  await load();
+  if ($('#dTagIn')) $('#dTagIn').focus();
+}
+
+function select(i) { cur = view[i] || cur; renderTable(); renderDetail();
+  const tr = document.querySelector(`tr[data-i="${i}"]`); tr && tr.scrollIntoView({block: 'nearest'}); }
+
+$('#rows').onclick = e => {
+  const tr = e.target.closest('tr'); if (!tr) return; const f = view[+tr.dataset.i];
+  if (e.target.type === 'checkbox') { e.target.checked ? selected.add(f.path) : selected.delete(f.path); renderTable(); return; }
+  select(+tr.dataset.i);
+};
+$('#rows').ondblclick = e => { const tr = e.target.closest('tr'); tr && openFile(view[+tr.dataset.i]); };
+$('#selAll').onchange = e => { view.forEach(f => e.target.checked ? selected.add(f.path) : selected.delete(f.path)); renderTable(); };
+document.querySelectorAll('th[data-k]').forEach(th => th.onclick = () => { F.dir = F.sort === th.dataset.k ? -F.dir : (th.dataset.k === 'score' || th.dataset.k === 'size' ? -1 : 1); F.sort = th.dataset.k; render(); });
+document.querySelectorAll('[data-clear]').forEach(a => a.onclick = () => { const k = a.dataset.clear; F[k] = Array.isArray(F[k]) ? [] : null; shown = PAGE; render(); });
+$('#more').onclick = () => { shown += PAGE; renderTable(); };
+let qt; $('#q').oninput = e => { clearTimeout(qt); qt = setTimeout(() => { F.q = e.target.value; shown = PAGE; persist(); renderFacets(); renderTable(); }, 150); };
+const rangeIn = () => { F.smin = +$('#smin').value || 0; F.smax = $('#smax').value === '' ? 100 : +$('#smax').value; shown = PAGE; render(); };
+$('#smin').onchange = rangeIn; $('#smax').onchange = rangeIn;
+const bulkTags = () => $('#bulkTag').value.split(',').map(s => s.trim()).filter(Boolean);
+$('#bulkAdd').onclick = () => bulkTags().length && tag([...selected], bulkTags(), []);
+$('#bulkRemove').onclick = () => bulkTags().length && tag([...selected], [], bulkTags());
+$('#bulkClear').onclick = () => { selected.clear(); $('#selAll').checked = false; renderTable(); };
+
+document.onkeydown = e => {
+  if (e.target.matches('input[type=text],input[type=search]') || $('#dlg').open) return;
+  const i = cur ? view.indexOf(cur) : -1;
+  if (e.key === 'ArrowDown') { e.preventDefault(); if (i + 1 >= shown) { shown += PAGE; } select(Math.min(view.length - 1, i + 1)); }
+  else if (e.key === 'ArrowUp') { e.preventDefault(); select(Math.max(0, i - 1)); }
+  else if (e.key === 'Enter' && cur) openFile(cur);
+  else if (e.key === ' ' && cur) { e.preventDefault(); selected.has(cur.path) ? selected.delete(cur.path) : selected.add(cur.path); renderTable(); }
+  else if (e.key === '/') { e.preventDefault(); $('#q').focus(); }
+};
+
+// klasör seçici
+async function browse(path) {
+  const r = await api('/api/browse?path=' + encodeURIComponent(path || ''));
+  if (r.error) { alert(r.error); return; }
+  $('#dPath').value = r.path; $('#dUp').dataset.p = r.parent;
+  $('#dirList').innerHTML = r.dirs.map(d => `<div data-d="${esc(d)}">📁 ${esc(d)}</div>`).join('') || '<div style="color:var(--muted)">alt klasör yok</div>';
+}
+$('#btnRoot').onclick = () => { $('#dlg').showModal(); browse(''); };
+$('#dirList').onclick = e => { const d = e.target.dataset.d; if (d) browse($('#dPath').value.replace(/\/$/, '') + '/' + d); };
+$('#dUp').onclick = () => browse($('#dUp').dataset.p);
+$('#dPath').onkeydown = e => { if (e.key === 'Enter') browse(e.target.value); };
+$('#dCancel').onclick = () => $('#dlg').close();
+$('#dOk').onclick = async () => { const r = await api('/api/root', {path: $('#dPath').value}); if (r.error) return alert(r.error);
+  $('#dlg').close(); Object.assign(F, {folder: null, tags: [], ext: [], notes: []}); cur = null; selected.clear(); poll(); };
+$('#btnScan').onclick = async () => { await api('/api/scan', {}); poll(); };
+
+let polling = false;
+async function poll() {
+  if (polling) return; polling = true;
+  let wasRunning = false;
+  while (true) {
+    const s = await api('/api/state');
+    $('#rootPath').textContent = s.root || 'Klasör seçilmedi'; $('#rootPath').title = s.root || '';
+    if (s.scan.running) { wasRunning = true; $('#progress').textContent = s.scan.total ? `taranıyor ${s.scan.done}/${s.scan.total}` : 'dosyalar listeleniyor…';
+      if (s.scan.done && s.scan.done % 500 < 50) await load(); }
+    else { $('#progress').textContent = s.poppler ? '' : 'PDF analizi için poppler kurun'; break; }
+    await new Promise(r => setTimeout(r, 700));
+  }
+  polling = false;
+  await load();
+  if (!files.length && !wasRunning) { const s = await api('/api/state'); if (!s.root) $('#btnRoot').click(); }
+}
+poll();
+</script>
+</body>
+</html>
