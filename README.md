@@ -4,6 +4,7 @@ Seçilen bir klasör altındaki e-kitaplar (EPUB, PDF, MOBI, DJVU, DOC…) için
 
 - **Meta bilgi:** yazar, başlık, yayınevi, dil, yıl, konu, açıklama, kapak, sayfa/karakter sayısı
 - **Kalite puanı (0–100):** metin tabanlı mı, taranmış mı, OCR var mı, içindekiler/kapak, bozuk Türkçe karakter
+- **Favoriler:** ★ ile işaretlenir, kalıcı olarak saklanır; "Favorilerim" düğmesiyle listelenir
 - **Etiketleme:** tek tek ya da çoklu seçimle toplu etiket ekleme/çıkarma
 - **Filtreleme:** arama, klasör, etiket, biçim, puan aralığı, kalite notları
 - **Aç:** dosyayı sistemin varsayılan uygulamasında açar ya da klasörde gösterir
@@ -33,10 +34,10 @@ Seçenekler: `--browser` (pencere yerine tarayıcıda aç), `--headless` (yalnı
 
 ## Klavye
 
-`↑ ↓` gezin · `Enter` aç · `Space` seç · `/` aramaya git
+`↑ ↓` gezin · `Enter` aç · `Space` seç · `F` favori · `/` aramaya git
 
 ## Veriler
 
-Ayarlar ve etiketler `~/.config/kitaplik/` altında (`config.json`, `kitaplik.db`) saklanır;
+Ayarlar, etiketler ve favoriler `~/.config/kitaplik/` altında (`config.json`, `kitaplik.db`) saklanır;
 kitap dosyalarına dokunulmaz. Etiketler dosyanın klasöre göre yoluna bağlıdır; bir dosya
 uygulama dışında taşınır ya da yeniden adlandırılırsa etiketi kaybolur.

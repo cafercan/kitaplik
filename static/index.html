@@ -54,6 +54,14 @@ td.c{width:28px;max-width:28px}
 .fmt{font-size:11px;text-transform:uppercase;color:var(--muted);letter-spacing:.4px}
 .tag{display:inline-flex;align-items:center;gap:4px;background:var(--accent-soft);color:var(--accent);border-radius:10px;padding:0 8px;font-size:12px;margin:0 3px 3px 0}
 .tag b{cursor:pointer;font-weight:400;opacity:.7}
+.star{cursor:pointer;color:var(--line);font-size:16px;line-height:1;user-select:none}
+.star.on{color:#e0a82e}
+.star:hover{color:#e0a82e}
+td.s{width:30px;max-width:30px;text-align:center}
+#favBtn{width:100%;text-align:left;display:flex;align-items:center;gap:8px;font-weight:600}
+#favBtn.on{background:var(--accent-soft);border-color:var(--accent);color:var(--accent)}
+#favBtn .n{margin-left:auto;color:var(--muted);font-weight:400;font-size:12px}
+#detail h2 .star{font-size:22px;float:right;margin-left:8px}
 #cover{width:100%;max-height:300px;object-fit:contain;border-radius:6px;background:var(--bg);margin-bottom:10px}
 #detail h2{font-size:17px;margin:0 0 2px}
 #detail .author{color:var(--muted);margin-bottom:12px}
@@ -83,6 +91,7 @@ kbd{font-size:11px;border:1px solid var(--line);border-radius:4px;padding:0 4px;
 <main>
   <aside>
     <div class="sec"><input id="q" type="search" placeholder="Ara: başlık, yazar, yayınevi…"></div>
+    <div class="sec"><button id="favBtn"><span class="star on">★</span> Favorilerim <span class="n" id="favN">0</span></button></div>
     <div class="sec"><h3>Klasör <a data-clear="folder">temizle</a></h3><div id="fFolder"></div></div>
     <div class="sec"><h3>Etiket <a data-clear="tags">temizle</a></h3><div id="fTags"></div></div>
     <div class="sec"><h3>Kalite puanı</h3>
@@ -96,11 +105,11 @@ kbd{font-size:11px;border:1px solid var(--line);border-radius:4px;padding:0 4px;
       <span id="count"></span>
       <div id="bulk"><b id="selCount"></b> seçili ·
         <input id="bulkTag" type="text" placeholder="etiket ekle/çıkar" list="tagNames">
-        <button id="bulkAdd">Ekle</button><button id="bulkRemove">Çıkar</button><button id="bulkClear">Seçimi bırak</button></div>
-      <span style="margin-left:auto"><kbd>↑↓</kbd> gez · <kbd>Enter</kbd> aç · <kbd>Space</kbd> seç</span>
+        <button id="bulkAdd">Ekle</button><button id="bulkRemove">Çıkar</button><button id="bulkFav">★ Favorile</button><button id="bulkClear">Seçimi bırak</button></div>
+      <span style="margin-left:auto"><kbd>↑↓</kbd> gez · <kbd>Enter</kbd> aç · <kbd>Space</kbd> seç · <kbd>F</kbd> favori</span>
     </div>
     <div id="tableWrap"><table>
-      <thead><tr><th class="c"><input type="checkbox" id="selAll"></th>
+      <thead><tr><th class="c"><input type="checkbox" id="selAll"></th><th data-k="fav" class="s" title="Favori">★</th>
         <th data-k="title">Başlık</th><th data-k="author">Yazar</th><th data-k="folder">Klasör</th>
         <th data-k="ext" style="width:60px">Biçim</th><th data-k="score" style="width:62px">Puan</th>
         <th data-k="size" style="width:74px">Boyut</th><th data-k="tags">Etiketler</th></tr></thead>
@@ -130,7 +139,7 @@ const PAGE = 300;
 
 let files = [], view = [], shown = PAGE, cur = null, selected = new Set();
 const saved = (() => { try { return JSON.parse(localStorage.getItem('kitaplik.ui')) || {} } catch { return {} } })();
-const F = Object.assign({q:'', folder:null, tags:[], ext:[], notes:[], smin:0, smax:100, sort:'title', dir:1}, saved);
+const F = Object.assign({q:'', fav:false, folder:null, tags:[], ext:[], notes:[], smin:0, smax:100, sort:'title', dir:1}, saved);
 const persist = () => { try { localStorage.setItem('kitaplik.ui', JSON.stringify(F)) } catch {} };
 
 async function load() {
@@ -147,6 +156,7 @@ async function load() {
 }
 
 function matches(f, skip) {
+  if (skip !== 'fav' && F.fav && !f.fav) return false;
   if (F.q && !fold(F.q).split(/\s+/).every(w => f._s.includes(w))) return false;
   if (skip !== 'folder' && F.folder && !(f.folder === F.folder || f.folder.startsWith(F.folder + '/'))) return false;
   if (skip !== 'tags' && F.tags.length && !F.tags.every(t => t === '∅' ? !f.tags.length : f.tags.includes(t))) return false;
@@ -173,6 +183,8 @@ function facet(el, key, entries, multi) {
 function count(list, fn) { const m = new Map(); for (const f of list) for (const k of [].concat(fn(f))) if (k) m.set(k, (m.get(k) || 0) + 1); return m; }
 
 function renderFacets() {
+  $('#favBtn').classList.toggle('on', F.fav);
+  $('#favN').textContent = files.filter(f => f.fav && matches(f, 'fav')).length;
   const byFolder = files.filter(f => matches(f, 'folder'));
   const tops = count(byFolder, f => f.top), seconds = count(byFolder, f => f.second);
   const folderEntries = [];
@@ -204,12 +216,13 @@ function renderFacets() {
 function renderTable() {
   view = files.filter(f => matches(f));
   const k = F.sort, d = F.dir;
-  view.sort((a, b) => { const x = k === 'tags' ? a.tags.join() : a[k], y = k === 'tags' ? b.tags.join() : b[k];
+  view.sort((a, b) => { const val = o => k === 'tags' ? o.tags.join() : k === 'fav' ? +o.fav : o[k], x = val(a), y = val(b);
     return (typeof x === 'number' ? x - y : String(x).localeCompare(String(y), 'tr')) * d; });
   document.querySelectorAll('th[data-k]').forEach(th => { th.classList.toggle('sorted', th.dataset.k === k);
     th.textContent = th.textContent.replace(/ [▲▼]$/, '') + (th.dataset.k === k ? (d > 0 ? ' ▲' : ' ▼') : ''); });
   $('#rows').innerHTML = view.slice(0, shown).map((f, i) => `<tr data-i="${i}" class="${cur && cur.path === f.path ? 'cur' : ''}">
     <td class="c"><input type="checkbox" ${selected.has(f.path) ? 'checked' : ''}></td>
+    <td class="s"><span class="star ${f.fav ? 'on' : ''}" title="Favori">${f.fav ? '★' : '☆'}</span></td>
     <td title="${esc(f.title)}">${esc(f.title)}</td><td title="${esc(f.author)}">${esc(f.author)}</td>
     <td title="${esc(f.folder)}" style="color:var(--muted)">${esc(f.folder)}</td>
     <td class="fmt">${esc(f.ext)}</td><td><span class="badge b-${band(f.score)}" title="${esc(f.notes)}">${f.score}</span></td>
@@ -225,7 +238,7 @@ function renderDetail() {
   if (!cur) { el.innerHTML = '<p class="empty">Bir kitap seç</p>'; return; }
   const f = cur, row = (k, v) => v ? `<dt>${k}</dt><dd>${esc(v)}</dd>` : '';
   el.innerHTML = `${f.ext === 'epub' ? `<img id="cover" src="/api/cover?t=${encodeURIComponent(TOKEN)}&path=${encodeURIComponent(f.path)}" onerror="this.remove()">` : ''}
-    <h2>${esc(f.title)}</h2><div class="author">${esc(f.author) || '<i>yazar bilinmiyor</i>'}</div>
+    <h2><span class="star ${f.fav ? 'on' : ''}" id="dFav" title="Favorilere ekle/çıkar (F)">${f.fav ? '★' : '☆'}</span>${esc(f.title)}</h2><div class="author">${esc(f.author) || '<i>yazar bilinmiyor</i>'}</div>
     <div class="actions"><button class="primary" id="dOpen">Aç</button><button id="dReveal">Klasörde göster</button></div>
     <div><span class="badge b-${band(f.score)}">${f.score}</span> <span style="color:var(--muted);font-size:13px">${esc(f.notes) || 'sorun bulunmadı'}</span></div>
     <dl>${row('Biçim', f.ext.toUpperCase())}${row('Boyut', sizeFmt(f.size))}${row('Yayınevi', f.publisher)}${row('Dil', f.language)}${row('Yıl', f.year)}
@@ -235,6 +248,7 @@ function renderDetail() {
       <input id="dTagIn" type="text" placeholder="etiket yaz, Enter" list="tagNames" style="margin-top:4px"></div>
     ${f.description ? `<div class="desc">${esc(f.description)}</div>` : ''}`;
   $('#dOpen').onclick = () => openFile(f);
+  $('#dFav').onclick = () => setFav([f.path], !f.fav);
   $('#dReveal').onclick = () => api('/api/open', {path: f.path, reveal: true});
   $('#dTags').onclick = e => { const t = e.target.dataset.t; if (t) tag([f.path], [], [t]); };
   $('#dTagIn').onkeydown = e => { if (e.key === 'Enter' && e.target.value.trim()) { tag([f.path], e.target.value.split(',').map(s => s.trim()), []); } };
@@ -242,6 +256,12 @@ function renderDetail() {
 
 function render() { persist(); renderFacets(); renderTable(); renderDetail(); $('#q').value = F.q; }
 const openFile = f => api('/api/open', {path: f.path});
+
+async function setFav(paths, on) {
+  await api('/api/fav', {paths, on});
+  for (const f of files) if (paths.includes(f.path)) f.fav = on;
+  render();
+}
 
 async function tag(paths, add, remove) {
   await api('/api/tags', {paths, add, remove});
@@ -254,12 +274,13 @@ function select(i) { cur = view[i] || cur; renderTable(); renderDetail();
 
 $('#rows').onclick = e => {
   const tr = e.target.closest('tr'); if (!tr) return; const f = view[+tr.dataset.i];
+  if (e.target.classList.contains('star')) { setFav([f.path], !f.fav); return; }
   if (e.target.type === 'checkbox') { e.target.checked ? selected.add(f.path) : selected.delete(f.path); renderTable(); return; }
   select(+tr.dataset.i);
 };
 $('#rows').ondblclick = e => { const tr = e.target.closest('tr'); tr && openFile(view[+tr.dataset.i]); };
 $('#selAll').onchange = e => { view.forEach(f => e.target.checked ? selected.add(f.path) : selected.delete(f.path)); renderTable(); };
-document.querySelectorAll('th[data-k]').forEach(th => th.onclick = () => { F.dir = F.sort === th.dataset.k ? -F.dir : (th.dataset.k === 'score' || th.dataset.k === 'size' ? -1 : 1); F.sort = th.dataset.k; render(); });
+document.querySelectorAll('th[data-k]').forEach(th => th.onclick = () => { F.dir = F.sort === th.dataset.k ? -F.dir : (['score', 'size', 'fav'].includes(th.dataset.k) ? -1 : 1); F.sort = th.dataset.k; render(); });
 document.querySelectorAll('[data-clear]').forEach(a => a.onclick = () => { const k = a.dataset.clear; F[k] = Array.isArray(F[k]) ? [] : null; shown = PAGE; render(); });
 $('#more').onclick = () => { shown += PAGE; renderTable(); };
 let qt; $('#q').oninput = e => { clearTimeout(qt); qt = setTimeout(() => { F.q = e.target.value; shown = PAGE; persist(); renderFacets(); renderTable(); }, 150); };
@@ -268,6 +289,8 @@ $('#smin').onchange = rangeIn; $('#smax').onchange = rangeIn;
 const bulkTags = () => $('#bulkTag').value.split(',').map(s => s.trim()).filter(Boolean);
 $('#bulkAdd').onclick = () => bulkTags().length && tag([...selected], bulkTags(), []);
 $('#bulkRemove').onclick = () => bulkTags().length && tag([...selected], [], bulkTags());
+$('#bulkFav').onclick = () => setFav([...selected], true);
+$('#favBtn').onclick = () => { F.fav = !F.fav; shown = PAGE; render(); };
 $('#bulkClear').onclick = () => { selected.clear(); $('#selAll').checked = false; renderTable(); };
 
 document.onkeydown = e => {
@@ -277,6 +300,7 @@ document.onkeydown = e => {
   else if (e.key === 'ArrowUp') { e.preventDefault(); select(Math.max(0, i - 1)); }
   else if (e.key === 'Enter' && cur) openFile(cur);
   else if (e.key === ' ' && cur) { e.preventDefault(); selected.has(cur.path) ? selected.delete(cur.path) : selected.add(cur.path); renderTable(); }
+  else if ((e.key === 'f' || e.key === 'F') && cur) setFav([cur.path], !cur.fav);
   else if (e.key === '/') { e.preventDefault(); $('#q').focus(); }
 };
 

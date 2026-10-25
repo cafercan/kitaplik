@@ -65,6 +65,8 @@ def db():
             PRIMARY KEY (root, path));
         CREATE TABLE IF NOT EXISTS tags (
             root TEXT, path TEXT, tag TEXT, PRIMARY KEY (root, path, tag));
+        CREATE TABLE IF NOT EXISTS favorites (
+            root TEXT, path TEXT, PRIMARY KEY (root, path));
     """)
     return con
 
@@ -351,11 +353,13 @@ class Handler(BaseHTTPRequestHandler):
             tags = {}
             for r in con.execute("SELECT path, tag FROM tags WHERE root=?", (root,)):
                 tags.setdefault(r["path"], []).append(r["tag"])
+            favs = {r["path"] for r in con.execute("SELECT path FROM favorites WHERE root=?", (root,))}
             rows = []
             for r in con.execute("SELECT * FROM files WHERE root=?", (root,)):
                 d = dict(r)
                 del d["root"]
                 d["tags"] = sorted(tags.get(d["path"], []))
+                d["fav"] = d["path"] in favs
                 rows.append(d)
             con.close()
             return self.send(rows)
@@ -409,6 +413,16 @@ class Handler(BaseHTTPRequestHandler):
                     con.executemany("INSERT OR IGNORE INTO tags VALUES (?,?,?)", [(root, p, tag) for p in paths])
             for tag in data.get("remove", []):
                 con.executemany("DELETE FROM tags WHERE root=? AND path=? AND tag=?", [(root, p, tag) for p in paths])
+            con.commit()
+            con.close()
+            return self.send({"ok": True})
+        if url.path == "/api/fav":
+            con = db()
+            rows = [(root, p) for p in data.get("paths", [])]
+            if data.get("on"):
+                con.executemany("INSERT OR IGNORE INTO favorites VALUES (?,?)", rows)
+            else:
+                con.executemany("DELETE FROM favorites WHERE root=? AND path=?", rows)
             con.commit()
             con.close()
             return self.send({"ok": True})
