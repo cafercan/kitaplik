@@ -20,7 +20,20 @@ favorites and tags, all stored locally without touching your book files.
 - **Remembers your library:** reopens the last folder and rescans only files that changed
 - **No dependencies:** a single Python file using only the standard library, with a native window (no browser tab)
 
-## Requirements
+## Download
+
+Get the package for your system from the [latest release](https://github.com/cafercan/kitaplik/releases/latest)
+(or install and update it with [C Launcher](https://github.com/cafercan/c-launcher)):
+
+| System | File | Notes |
+|---|---|---|
+| Windows 10/11 | `kitaplik-<ver>-windows-x64-setup.exe` | Per-user install, no admin rights needed |
+| macOS 11+ (Apple silicon) | `kitaplik-<ver>-macos-arm64.dmg` | Not notarized: on first launch right-click the app and choose **Open** |
+| Linux (Debian, Ubuntu, Mint) | `kitaplik-<ver>-linux-all.deb` | `sudo apt install ./kitaplik-<ver>-linux-all.deb` |
+
+Every release includes `SHA256SUMS.txt`. The Windows and macOS packages bundle Python; nothing else to install.
+
+## Requirements (running from source)
 
 - Python 3.9+
 - **Linux:** GTK 3 and WebKit2GTK 4.1 with Python bindings (preinstalled on Ubuntu/GNOME;
